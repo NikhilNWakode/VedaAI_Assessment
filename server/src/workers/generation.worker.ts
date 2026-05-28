@@ -1,6 +1,6 @@
 // generation.worker.ts
 import { Worker, Job } from "bullmq";
-import { createConnection } from "../config/redis.js";
+import { redisConnectionOpts } from "../config/redis.js";
 import { getIO } from "../config/socket.js";
 import Assignment from "../models/Assignment.js";
 import { generatePaper } from "../services/gemini.service.js";
@@ -86,7 +86,7 @@ try {
 
 },
 {
-connection: createConnection("worker") as any,
+connection: redisConnectionOpts as any,
 concurrency: 1,
 }
 );
