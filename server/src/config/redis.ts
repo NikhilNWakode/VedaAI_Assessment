@@ -5,8 +5,7 @@ import IORedis from "ioredis";
 const redisUrl = process.env.REDIS_URL || "redis://localhost:6379";
 const isTLS = redisUrl.startsWith("rediss://");
 
-// Connection options shared by all Redis connections (ours + BullMQ's internal ones)
-export const redisOpts: Record<string, any> = {
+const baseOpts: Record<string, any> = {
   maxRetriesPerRequest: null,
   enableReadyCheck: false,
   keepAlive: 10000,
@@ -20,22 +19,19 @@ export const redisOpts: Record<string, any> = {
   ...(isTLS ? { tls: { rejectUnauthorized: false } } : {}),
 };
 
-// Single shared connection for our own use
-export const redisConnection = new IORedis(redisUrl, redisOpts);
+/** Create a new IORedis instance with error suppression built in */
+function createConnection(label: string): IORedis {
+  const conn = new IORedis(redisUrl, baseOpts);
+  conn.on("error", () => {}); // suppress reconnect noise
+  conn.on("connect", () => console.log(`Redis [${label}] connected`));
+  return conn;
+}
 
-redisConnection.on("connect", () => {
-  console.log("Redis connected");
-});
+// Each BullMQ Queue/Worker needs its own connection (they call .duplicate() internally)
+export const redisConnection = createConnection("main");
 
-// Silently handle reconnect noise
-redisConnection.on("error", () => {});
-
-// BullMQ Queue — pass URL + options so BullMQ creates its own managed connections
 export const generationQueue = new Queue("assessment-generation", {
-  connection: {
-    url: redisUrl,
-    ...redisOpts,
-  } as any,
+  connection: createConnection("queue") as any,
   defaultJobOptions: {
     attempts: 3,
     backoff: {
@@ -44,3 +40,6 @@ export const generationQueue = new Queue("assessment-generation", {
     },
   },
 });
+
+// Export factory for the worker to create its own connection
+export { createConnection };
