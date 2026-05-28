@@ -42,7 +42,7 @@ export function Sidebar({ onClose }: SidebarProps) {
       {/* Logo */}
       <div className="flex items-center justify-between pb-4">
         <Link href="/" className="flex items-center gap-2.5">
-          <div className="relative h-9 w-9 overflow-hidden rounded-lg bg-orange-500">
+          <div className="relative h-9 w-9 overflow-hidden rounded-lg">
             <Image
               src="/logo.png"
               alt="VedaAI Logo"

@@ -38,7 +38,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Main content area */}
       <div className="relative flex flex-1 flex-col overflow-hidden">
         <TopBar onMenuClick={openSidebar} />
-        <main className="flex-1 overflow-y-auto pt-[140px] pb-20 lg:pt-[80px] lg:pb-0">
+        <main className="flex-1 overflow-y-auto pt-[140px] pb-20 lg:pt-[72px] lg:pb-0">
           {children}
         </main>
         <MobileNav />
