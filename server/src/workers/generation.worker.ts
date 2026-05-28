@@ -91,12 +91,22 @@ concurrency: 1,
 }
 );
 
+worker.on("ready", () => {
+  console.log("Worker READY — listening for jobs");
+});
+
 worker.on("completed", (job) => {
-console.log(`Job ${job.id} completed`);
+  console.log(`Job ${job.id} completed`);
 });
 
 worker.on("failed", (job, err) => {
-console.error(`Job ${job?.id} failed:`, err.message);
+  console.error(`Job ${job?.id} failed:`, err.message);
 });
+
+worker.on("error", (err) => {
+  console.error("Worker error:", err.message);
+});
+
+console.log("Worker registered for queue: assessment-generation");
 
 export default worker;

@@ -37,4 +37,10 @@ export const generationQueue = new Queue("assessment-generation", {
   },
 });
 
-console.log(`Redis configured → ${redisConnectionOpts.host}:${redisConnectionOpts.port}`);
+console.log(`Redis configured → ${redisConnectionOpts.host}:${redisConnectionOpts.port} (TLS: ${"tls" in redisConnectionOpts})`);
+
+// Log queue events
+generationQueue.on("error", (err) => {
+  console.error("Queue error:", err.message);
+});
+

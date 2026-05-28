@@ -1,23 +1,13 @@
-// suppress-errors.ts
-// Must be imported FIRST in index.ts before anything else.
-//
-// Upstash free tier aggressively drops idle TCP connections.
-// ioredis/BullMQ reconnect fine, but error messages leak to stderr
-// from Node's internal TCP layer before any JS-level handler can catch them.
-// This intercepts stderr to filter out the harmless reconnect noise.
+// suppress-errors.ts — imported first in index.ts
 
-const origWrite = process.stderr.write.bind(process.stderr);
-
-process.stderr.write = ((chunk: any, encodingOrCb?: any, cb?: any): boolean => {
-  const str = typeof chunk === "string" ? chunk : chunk.toString();
-  if (str.includes("ECONNRESET") || str.includes("EPIPE")) return true;
-  return origWrite(chunk, encodingOrCb, cb);
-}) as typeof process.stderr.write;
-
-// Safety net for anything that slips through as an exception
+// Catch uncaught exceptions so the process doesn't crash on Redis reconnects
 process.on("uncaughtException", (err) => {
   const msg = err?.message || "";
-  if (msg.includes("ECONNRESET") || msg.includes("EPIPE")) return;
+  if (msg.includes("ECONNRESET") || msg.includes("EPIPE")) {
+    // Log once briefly instead of full stack trace
+    console.warn(`[redis-reconnect] ${(err as any).code || msg}`);
+    return;
+  }
   console.error("Uncaught exception:", err);
   process.exit(1);
 });
