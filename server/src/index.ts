@@ -1,5 +1,12 @@
 import "dotenv/config";
 
+// Suppress uncaught Redis reconnect noise (ECONNRESET / EPIPE from BullMQ internals)
+process.on("uncaughtException", (err) => {
+  if (err.message?.includes("ECONNRESET") || err.message?.includes("EPIPE")) return;
+  console.error("Uncaught exception:", err);
+  process.exit(1);
+});
+
 import express from "express";
 import http from "http";
 import cors from "cors";
