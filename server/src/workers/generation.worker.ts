@@ -86,7 +86,7 @@ try {
 
 },
 {
-connection: redisConnection,
+connection: redisConnection as any,
 concurrency: 1,
 }
 );
