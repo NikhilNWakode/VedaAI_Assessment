@@ -19,15 +19,26 @@ const baseOpts: Record<string, any> = {
   ...(isTLS ? { tls: { rejectUnauthorized: false } } : {}),
 };
 
-/** Create a new IORedis instance with error suppression built in */
+/** Create an IORedis instance whose .duplicate() also suppresses errors */
 function createConnection(label: string): IORedis {
   const conn = new IORedis(redisUrl, baseOpts);
-  conn.on("error", () => {}); // suppress reconnect noise
-  conn.on("connect", () => console.log(`Redis [${label}] connected`));
+
+  // Suppress error events on this instance
+  conn.on("error", () => {});
+
+  // BullMQ calls .duplicate() internally — patch it so the copy
+  // also has an error handler (otherwise ECONNRESET crashes the process)
+  const origDuplicate = conn.duplicate.bind(conn);
+  (conn as any).duplicate = (overrides?: Record<string, any>) => {
+    const dup = origDuplicate(overrides);
+    dup.on("error", () => {});
+    return dup;
+  };
+
+  console.log(`Redis [${label}] ready`);
   return conn;
 }
 
-// Each BullMQ Queue/Worker needs its own connection (they call .duplicate() internally)
 export const redisConnection = createConnection("main");
 
 export const generationQueue = new Queue("assessment-generation", {
@@ -41,5 +52,4 @@ export const generationQueue = new Queue("assessment-generation", {
   },
 });
 
-// Export factory for the worker to create its own connection
 export { createConnection };
