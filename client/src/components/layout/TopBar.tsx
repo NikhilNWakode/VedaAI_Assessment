@@ -46,7 +46,7 @@ export function TopBar({ onMenuClick }: TopBarProps) {
         <div className="flex h-16 items-center justify-between border-b border-gray-100 px-4">
           <Link href="/" className="flex items-center gap-2.5">
             <div className="relative h-10 w-10 overflow-hidden rounded-xl">
-              <Image src="/logo2.png" alt="VedaAI" fill className="object-cover" />
+              <Image src="/logo.png" alt="VedaAI" fill className="object-cover" />
             </div>
             <span className="text-xl font-bold text-gray-900">
               Veda<span className="text-orange-500">AI</span>
