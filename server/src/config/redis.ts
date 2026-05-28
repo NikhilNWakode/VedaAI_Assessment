@@ -1,33 +1,39 @@
 // redis.ts
 import { Queue } from "bullmq";
+import IORedis from "ioredis";
 
 const redisUrl = process.env.REDIS_URL || "redis://localhost:6379";
 
-// Parse Redis URL into IORedis-compatible options so BullMQ manages
-// all connections internally (no orphan sockets throwing ECONNRESET)
-function parseRedisUrl(url: string) {
-  const parsed = new URL(url);
-  const isTLS = parsed.protocol === "rediss:";
-  return {
-    host: parsed.hostname,
-    port: Number(parsed.port) || 6379,
-    username: parsed.username || undefined,
-    password: parsed.password || undefined,
+// Let IORedis parse the URL — it handles rediss://, special chars in
+// passwords, etc. correctly. We just add BullMQ-required options.
+function createConnection(label: string): IORedis {
+  const conn = new IORedis(redisUrl, {
     maxRetriesPerRequest: null,
     enableReadyCheck: false,
     keepAlive: 10000,
     connectTimeout: 15000,
-    retryStrategy(times: number) {
+    retryStrategy(times) {
       return Math.min(times * 500, 5000);
     },
-    ...(isTLS ? { tls: { rejectUnauthorized: false } } : {}),
+    // IORedis auto-enables TLS for rediss:// URLs
+  });
+
+  conn.on("error", () => {}); // suppress reconnect noise
+
+  // BullMQ calls .duplicate() internally — ensure copies also suppress errors
+  const origDup = conn.duplicate.bind(conn);
+  (conn as any).duplicate = (opts?: any) => {
+    const dup = origDup(opts);
+    dup.on("error", () => {});
+    return dup;
   };
+
+  console.log(`Redis [${label}] initialized`);
+  return conn;
 }
 
-export const redisConnectionOpts = parseRedisUrl(redisUrl);
-
 export const generationQueue = new Queue("assessment-generation", {
-  connection: redisConnectionOpts as any,
+  connection: createConnection("queue") as any,
   defaultJobOptions: {
     attempts: 3,
     backoff: {
@@ -37,10 +43,4 @@ export const generationQueue = new Queue("assessment-generation", {
   },
 });
 
-console.log(`Redis configured → ${redisConnectionOpts.host}:${redisConnectionOpts.port} (TLS: ${"tls" in redisConnectionOpts})`);
-
-// Log queue events
-generationQueue.on("error", (err) => {
-  console.error("Queue error:", err.message);
-});
-
+export { createConnection };
